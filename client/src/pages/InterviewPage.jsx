@@ -5,7 +5,7 @@ import Step2Interview from '../components/Step2Interview'
 import Step3Report from '../components/step3Report'
 
 function InterviewPage() {
-    const [step,setStep]=useState(1)
+    const [step,setStep]=useState(1) //
     const [interviewData,setInerviewData]=useState(null)
   return (
     <div className='min-h-screen bg-gray-50'>
