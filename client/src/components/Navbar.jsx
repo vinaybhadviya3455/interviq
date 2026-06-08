@@ -9,6 +9,11 @@ import { useNavigate } from 'react-router-dom';
 import { ServerUrl } from '../App';
 import { setUserData } from '../redux/userSlice';
 
+import lImg from "../assets/travel.png"
+
+
+
+
 import axios from 'axios'
 import AuthModel from './AuthModel';
 
@@ -48,12 +53,27 @@ function Navbar() {
          className='w-full max-w-6xl bg-white rounded-[24px] shadow-sm border border-gray-200 px-8 py-4 flex justify-between items-center relative'>
 
             <div className='flex items-center gap-3 cursor-pointer'>
-                <div className='bg-black text-white p-2 rounded-lg'>
+                {/* <div className='bg-black text-white p-2 rounded-lg'> */}
 
-                    <BsRobot size={18}/>
+                    {/* <BsRobot size={18}/> */}
 
-                </div>
-                <h1 className='font-semibold hidden md:block text-lg'>IntervIQ</h1>
+                    {/* <img src={lImg} size={1} alt="" /> */}
+
+
+
+                {/* </div> */}
+
+                <div className="flex items-center gap-2">
+  <img
+    src={lImg}
+    alt="Cogniva Logo"
+    className="w-8 h-8 object-contain"
+  />
+  <span className="text-xl font-bold">Cogniva</span>
+</div>
+
+
+                {/* <h1 className='font-semibold hidden md:block text-lg'>Cogniva</h1> */}
             </div>
 
 

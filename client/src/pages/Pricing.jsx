@@ -78,7 +78,7 @@ function Pricing() {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
       amount: result.data.amount,
       currency: "INR",
-      name: "IntervIQ",
+      name: "Cogniva",
       description: `${plan.name} - ${plan.credits} Credits`,
       order_id: result.data.id,
 

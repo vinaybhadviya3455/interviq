@@ -13,6 +13,8 @@ import { ServerUrl } from '../App';
 import { useDispatch } from 'react-redux';
 import { setUserData } from '../redux/userSlice';
 
+import lImg from "../assets/travel.png"
+
 function Auth({isModel=false}) {
 
     const dispatch = useDispatch()
@@ -49,11 +51,22 @@ function Auth({isModel=false}) {
     bg-white shadow-2xl border border-gray-200
 `}>
                 <div className='flex items-center justify-center gap-3 mb-6'>
-                    <div className='bg-black text-white p-2 rounded-lg'>
+                    {/* <div className='bg-black text-white p-2 rounded-lg'>
                         <BsRobot size={18} />
 
                     </div>
-                    <h2 className='font-semibold text-lg'>IntervIQ</h2>
+                    <h2 className='font-semibold text-lg'>Cogniva</h2> */}
+
+                     <div className="flex items-center gap-2">
+                                      <img
+                                        src={lImg}
+                                        alt="Cogniva Logo"
+                                        className="w-8 h-8 object-contain"
+                                      />
+                                      <span className="text-xl font-bold">Cogniva</span>
+                                    </div>
+
+
                 </div>
                 <h1 className='text-2xl md:text-3xl font-semibold text-center leading-snug mb-4'>
                     continue with {" "}
