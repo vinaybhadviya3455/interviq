@@ -1,112 +1,372 @@
-import React from 'react'
-
-import { BsRobot } from "react-icons/bs";
-import { IoSparkles } from "react-icons/io5";
-
-import { motion } from "motion/react"
-
-import { FcGoogle } from "react-icons/fc";
-import { signInWithPopup } from 'firebase/auth';
-import { auth, provider } from '../utils/firebase';
+import React, { useState } from 'react'
+import { motion, AnimatePresence } from 'motion/react'
+import { FcGoogle } from 'react-icons/fc'
+import { IoSparkles } from 'react-icons/io5'
+import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai'
+import { signInWithPopup } from 'firebase/auth'
+import { auth, provider } from '../utils/firebase'
 import axios from 'axios'
-import { ServerUrl } from '../App';
-import { useDispatch } from 'react-redux';
-import { setUserData } from '../redux/userSlice';
+import { ServerUrl } from '../App'
+import { useDispatch } from 'react-redux'
+import { setUserData } from '../redux/userSlice'
+import lImg from '../assets/travel.png'
 
-import lImg from "../assets/travel.png"
-
-function Auth({isModel=false}) {
-
+function Auth({ isModel = false }) {
     const dispatch = useDispatch()
 
-    const handleGoogleAuth = async()=>{
+    // 'login' | 'register' | 'google'
+    const [tab, setTab] = useState('login')
+
+    const [name, setName] = useState('')
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+    const [showPass, setShowPass] = useState(false)
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState('')
+
+    const reset = () => {
+        setName('')
+        setEmail('')
+        setPassword('')
+        setError('')
+        setShowPass(false)
+    }
+
+    const switchTab = (t) => {
+        reset()
+        setTab(t)
+    }
+
+    // ── Google ────────────────────────────────────────────────────────────────
+    const handleGoogleAuth = async () => {
+        setError('')
+        setLoading(true)
         try {
-            const response = await signInWithPopup(auth,provider)
-           let User = response.user
-           let name = User.displayName
-           let email = User.email
-           const result = await axios.post(ServerUrl+"/api/auth/google" ,{name,email},{withCredentials:true})
-
-           dispatch(setUserData(result.data))
-           
-        } catch (error) {
-            console.log(error)
-
+            const response = await signInWithPopup(auth, provider)
+            const { displayName: gName, email: gEmail } = response.user
+            const result = await axios.post(
+                ServerUrl + '/api/auth/google',
+                { name: gName, email: gEmail },
+                { withCredentials: true }
+            )
+            dispatch(setUserData(result.data))
+        } catch (err) {
+            setError('Google sign-in failed. Please try again.')
             dispatch(setUserData(null))
+        } finally {
+            setLoading(false)
         }
     }
 
+    // ── Register ──────────────────────────────────────────────────────────────
+    const handleRegister = async () => {
+        setError('')
+        if (!name.trim() || !email.trim() || !password.trim()) {
+            return setError('All fields are required.')
+        }
+        if (password.length < 6) {
+            return setError('Password must be at least 6 characters.')
+        }
+        setLoading(true)
+        try {
+            const result = await axios.post(
+                ServerUrl + '/api/auth/register',
+                { name, email, password },
+                { withCredentials: true }
+            )
+            dispatch(setUserData(result.data))
+        } catch (err) {
+            setError(err.response?.data?.message || 'Registration failed.')
+        } finally {
+            setLoading(false)
+        }
+    }
 
+    // ── Login ─────────────────────────────────────────────────────────────────
+    const handleLogin = async () => {
+        setError('')
+        if (!email.trim() || !password.trim()) {
+            return setError('Email and password are required.')
+        }
+        setLoading(true)
+        try {
+            const result = await axios.post(
+                ServerUrl + '/api/auth/login',
+                { email, password },
+                { withCredentials: true }
+            )
+            dispatch(setUserData(result.data))
+        } catch (err) {
+            setError(err.response?.data?.message || 'Login failed.')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const tabs = [
+        { key: 'login', label: 'Login' },
+        { key: 'register', label: 'Register' },
+        { key: 'google', label: 'Google' },
+    ]
 
     return (
-        <div className={`w-full
-    ${isModel ? "py-4" : "min-h-screen bg-[#f3f3f3] flex items-center justify-center px-6 py-20"}
-`}>
+        <div
+            className={`w-full ${
+                isModel
+                    ? 'py-4'
+                    : 'min-h-screen bg-[#f3f3f3] flex items-center justify-center px-6 py-20'
+            }`}
+        >
             <motion.div
-            initial={{opacity:0,y:-40}}
-            animate={{opacity:1,y:0}}
-            transition={{duration:1.05}}
-             className={`w-full
-    ${isModel ? "max-w-md p-8 rounded-3xl" : "max-w-lg p-12 rounded-[32px]"}
-    bg-white shadow-2xl border border-gray-200
-`}>
-                <div className='flex items-center justify-center gap-3 mb-6'>
-                    {/* <div className='bg-black text-white p-2 rounded-lg'>
-                        <BsRobot size={18} />
-
-                    </div>
-                    <h2 className='font-semibold text-lg'>Cogniva</h2> */}
-
-                     <div className="flex items-center gap-2">
-                                      <img
-                                        src={lImg}
-                                        alt="Cogniva Logo"
-                                        className="w-8 h-8 object-contain"
-                                      />
-                                      <span className="text-xl font-bold">Cogniva</span>
-                                    </div>
-
-
+                initial={{ opacity: 0, y: -40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className={`w-full ${
+                    isModel ? 'max-w-md p-8 rounded-3xl' : 'max-w-lg p-12 rounded-[32px]'
+                } bg-white shadow-2xl border border-gray-200`}
+            >
+                {/* Logo */}
+                <div className="flex items-center justify-center gap-2 mb-6">
+                    <img src={lImg} alt="IntervIQ Logo" className="w-8 h-8 object-contain" />
+                    <span className="text-xl font-bold">Cogniva</span>
                 </div>
-                <h1 className='text-2xl md:text-3xl font-semibold text-center leading-snug mb-4'>
-                    continue with {" "}
-                    <span className='bg-green-100 text-green-600 px-3 py-1
-rounded-full inline-flex items-center gap-2'>
-       
-                    <IoSparkles size={16} />
 
-                    AI Smart Interview
-                    
-
+                {/* Headline */}
+                <h1 className="text-2xl md:text-3xl font-semibold text-center leading-snug mb-2">
+                    Continue with{' '}
+                    <span className="bg-green-100 text-green-600 px-3 py-1 rounded-full inline-flex items-center gap-1">
+                        <IoSparkles size={15} />
+                        AI Interviews
                     </span>
                 </h1>
-
-                <p className='text-gray-500 text-center text-sm md:text-base leading-releaxed mb-8'>
-                    Sign in to start AI-powered mock interviews,track your progress,and unlock detailed performance insights.
+                <p className="text-gray-500 text-center text-sm mb-7">
+                    Practice smarter. Get hired faster.
                 </p>
 
+                {/* Tab switcher */}
+                <div className="flex bg-gray-100 rounded-full p-1 mb-7">
+                    {tabs.map((t) => (
+                        <button
+                            key={t.key}
+                            onClick={() => switchTab(t.key)}
+                            className={`flex-1 py-2 text-sm font-medium rounded-full transition-all duration-200 ${
+                                tab === t.key
+                                    ? 'bg-white text-black shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
+                </div>
 
-                <motion.button 
+                {/* Error */}
+                <AnimatePresence>
+                    {error && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl mb-5"
+                        >
+                            {error}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
-                onClick={handleGoogleAuth}
+                {/* ── Login Tab ── */}
+                <AnimatePresence mode="wait">
+                    {tab === 'login' && (
+                        <motion.div
+                            key="login"
+                            initial={{ opacity: 0, x: -16 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 16 }}
+                            transition={{ duration: 0.2 }}
+                            className="flex flex-col gap-4"
+                        >
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Email
+                                </label>
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="you@example.com"
+                                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition"
+                                />
+                            </div>
 
-                whileHover={{opacity:0.9,scale:1.03}}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Password
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type={showPass ? 'text' : 'password'}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                                        placeholder="••••••••"
+                                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition pr-11"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPass(!showPass)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    >
+                                        {showPass ? <AiOutlineEyeInvisible size={18} /> : <AiOutlineEye size={18} />}
+                                    </button>
+                                </div>
+                            </div>
 
-                whileTap={{opacity:1,scale:0.98}}
+                            <motion.button
+                                onClick={handleLogin}
+                                disabled={loading}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                className="w-full bg-black text-white py-3 rounded-full text-sm font-medium shadow-md disabled:opacity-60 mt-1"
+                            >
+                                {loading ? 'Signing in…' : 'Login'}
+                            </motion.button>
 
+                            <p className="text-center text-sm text-gray-500">
+                                No account?{' '}
+                                <button
+                                    onClick={() => switchTab('register')}
+                                    className="text-green-600 font-medium hover:underline"
+                                >
+                                    Register
+                                </button>
+                            </p>
+                        </motion.div>
+                    )}
 
-                className='w-full flex items-center justify-center gap-3 py-3 bg-black text-white rounded-full shadow-md'
-                >
-                    <FcGoogle size={20} />
-                    Continue with Google
+                    {/* ── Register Tab ── */}
+                    {tab === 'register' && (
+                        <motion.div
+                            key="register"
+                            initial={{ opacity: 0, x: -16 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 16 }}
+                            transition={{ duration: 0.2 }}
+                            className="flex flex-col gap-4"
+                        >
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Full Name
+                                </label>
+                                <input
+                                    type="text"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    placeholder="Your name"
+                                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition"
+                                />
+                            </div>
 
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Email
+                                </label>
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="you@example.com"
+                                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition"
+                                />
+                            </div>
 
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Password
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type={showPass ? 'text' : 'password'}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
+                                        placeholder="Min. 6 characters"
+                                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition pr-11"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPass(!showPass)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    >
+                                        {showPass ? <AiOutlineEyeInvisible size={18} /> : <AiOutlineEye size={18} />}
+                                    </button>
+                                </div>
+                            </div>
 
+                            <motion.button
+                                onClick={handleRegister}
+                                disabled={loading}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                className="w-full bg-black text-white py-3 rounded-full text-sm font-medium shadow-md disabled:opacity-60 mt-1"
+                            >
+                                {loading ? 'Creating account…' : 'Create Account'}
+                            </motion.button>
 
-                </motion.button>
+                            <p className="text-center text-sm text-gray-500">
+                                Already have an account?{' '}
+                                <button
+                                    onClick={() => switchTab('login')}
+                                    className="text-green-600 font-medium hover:underline"
+                                >
+                                    Login
+                                </button>
+                            </p>
+                        </motion.div>
+                    )}
 
-
-
+                    {/* ── Google Tab ── */}
+                    {tab === 'google' && (
+                        <motion.div
+                            key="google"
+                            initial={{ opacity: 0, x: -16 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 16 }}
+                            transition={{ duration: 0.2 }}
+                            className="flex flex-col items-center gap-5 py-4"
+                        >
+                            <div className="w-16 h-16 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center">
+                                <FcGoogle size={32} />
+                            </div>
+                            <div className="text-center">
+                                <p className="font-medium text-gray-800 mb-1">Sign in with Google</p>
+                                <p className="text-sm text-gray-500">
+                                    Quick and secure — no password needed.
+                                </p>
+                            </div>
+                            <motion.button
+                                onClick={handleGoogleAuth}
+                                disabled={loading}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                className="w-full flex items-center justify-center gap-3 py-3 bg-black text-white rounded-full shadow-md text-sm font-medium disabled:opacity-60"
+                            >
+                                <FcGoogle size={18} />
+                                {loading ? 'Connecting…' : 'Continue with Google'}
+                            </motion.button>
+                            <p className="text-center text-sm text-gray-500">
+                                Prefer email?{' '}
+                                <button
+                                    onClick={() => switchTab('login')}
+                                    className="text-green-600 font-medium hover:underline"
+                                >
+                                    Login with password
+                                </button>
+                            </p>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </motion.div>
         </div>
     )
