@@ -124,9 +124,10 @@ function Navbar() {
                        
                     </button>
                     {showUserPopup && (
-                        <div className='absolute right-0 mt-3 w-48 bg-white shadow-xl border border-gray-200 rounded-xl p-4 z-50'>
+                        <div className='absolute right-0 mt-3 w-56 bg-white shadow-xl border border-gray-200 rounded-xl p-4 z-50'>
 
-                            <p className='text-md text-blue-500 font-medium mb-1'>{userData?.name}</p>
+                            <p className='text-md text-blue-500 font-medium mb-0.5'>{userData?.name}</p>
+                            <p className='text-xs text-gray-400 mb-3 truncate'>{userData?.email}</p>
 
                             <button onClick={()=>navigate("/history")} className='w-full text-left text-sm py-2 hover:text-black text-gray-600'>Interview History</button>
                             <button onClick={handleLogout} className='w-full text-left text-sm py-2 flex items-center gap-2 text-red-500'>

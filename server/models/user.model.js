@@ -17,6 +17,14 @@ const userSchema = new mongoose.Schema({
     credits: {
         type: Number,
         default: 100
+    },
+    resetPasswordToken: {
+        type: String,
+        default: null
+    },
+    resetPasswordTokenExpiry: {
+        type: Date,
+        default: null
     }
 }, { timestamps: true })
 

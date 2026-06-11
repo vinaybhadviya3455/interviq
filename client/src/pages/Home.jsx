@@ -4,8 +4,8 @@ import { useSelector } from 'react-redux'
 import { motion } from 'motion/react'
 import { BsRobot, BsMic, BsClock, BsBarChart, BsFileEarmarkText } from 'react-icons/bs'
 import { HiSparkles } from 'react-icons/hi'
-import { useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import AuthModel from '../components/AuthModel'
 import evalImg from "../assets/ai-ans.png"
 import hrImg from "../assets/HR.png"
@@ -23,7 +23,20 @@ import Footer from '../components/Footer'
 function Home() {
   const { userData } = useSelector((state) => state.user)
   const [showAuth, setShowAuth] = useState(false);
+  const [authTab, setAuthTab] = useState('login');
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // Auto-open auth modal when coming from forgot-password links
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('showAuth') === 'true') {
+      setAuthTab(params.get('tab') || 'login')
+      setShowAuth(true)
+      // Clean up the URL without triggering a navigation
+      window.history.replaceState({}, '', '/')
+    }
+  }, [location.search])
   return (
     <div className='min-h-screen bg-[#f3f3f3] flex flex-col'>
       <Navbar />
@@ -327,7 +340,7 @@ function Home() {
 
         </div>
       </div>
-      {showAuth && <AuthModel onClose={() => setShowAuth(false)} />}
+      {showAuth && <AuthModel onClose={() => setShowAuth(false)} initialTab={authTab} />}
 
         <Footer></Footer>
     </div>

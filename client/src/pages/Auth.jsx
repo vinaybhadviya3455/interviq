@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { FcGoogle } from 'react-icons/fc'
 import { IoSparkles } from 'react-icons/io5'
@@ -7,15 +7,23 @@ import { signInWithPopup } from 'firebase/auth'
 import { auth, provider } from '../utils/firebase'
 import axios from 'axios'
 import { ServerUrl } from '../App'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { setUserData } from '../redux/userSlice'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import lImg from '../assets/travel.png'
 
-function Auth({ isModel = false }) {
+function Auth({ isModel = false, defaultTab }) {
     const dispatch = useDispatch()
+    const navigate = useNavigate()
+    const location = useLocation()
+    const { userData } = useSelector((state) => state.user)
+
+    // For standalone page: read ?tab= from URL. For modal: use defaultTab prop.
+    const searchParams = new URLSearchParams(location.search)
+    const initialTab = defaultTab || searchParams.get('tab') || 'login'
 
     // 'login' | 'register' | 'google'
-    const [tab, setTab] = useState('login')
+    const [tab, setTab] = useState(initialTab)
 
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
@@ -23,6 +31,13 @@ function Auth({ isModel = false }) {
     const [showPass, setShowPass] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+
+    // If already logged in and on the standalone /auth page, go home
+    useEffect(() => {
+        if (!isModel && userData) {
+            navigate('/', { replace: true })
+        }
+    }, [userData, isModel, navigate])
 
     const reset = () => {
         setName('')
@@ -37,6 +52,14 @@ function Auth({ isModel = false }) {
         setTab(t)
     }
 
+    // After any successful auth on standalone page, go home
+    const onAuthSuccess = (data) => {
+        dispatch(setUserData(data))
+        if (!isModel) {
+            navigate('/', { replace: true })
+        }
+    }
+
     // ── Google ────────────────────────────────────────────────────────────────
     const handleGoogleAuth = async () => {
         setError('')
@@ -49,7 +72,7 @@ function Auth({ isModel = false }) {
                 { name: gName, email: gEmail },
                 { withCredentials: true }
             )
-            dispatch(setUserData(result.data))
+            onAuthSuccess(result.data)
         } catch (err) {
             setError('Google sign-in failed. Please try again.')
             dispatch(setUserData(null))
@@ -74,7 +97,7 @@ function Auth({ isModel = false }) {
                 { name, email, password },
                 { withCredentials: true }
             )
-            dispatch(setUserData(result.data))
+            onAuthSuccess(result.data)
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed.')
         } finally {
@@ -95,7 +118,7 @@ function Auth({ isModel = false }) {
                 { email, password },
                 { withCredentials: true }
             )
-            dispatch(setUserData(result.data))
+            onAuthSuccess(result.data)
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed.')
         } finally {
@@ -201,9 +224,17 @@ function Auth({ isModel = false }) {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Password
-                                </label>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Password
+                                    </label>
+                                    <Link
+                                        to="/forgot-password"
+                                        className="text-xs text-green-600 hover:underline font-medium"
+                                    >
+                                        Forgot password?
+                                    </Link>
+                                </div>
                                 <div className="relative">
                                     <input
                                         type={showPass ? 'text' : 'password'}
