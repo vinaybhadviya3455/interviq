@@ -32,6 +32,14 @@ function Auth({ isModel = false, defaultTab }) {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
 
+    // ── Email verification (OTP / link) ─────────────────────────────────────
+    const [verifyEmail, setVerifyEmail] = useState(null) // set when verification is required
+    const [otp, setOtp] = useState('')
+    const [verifyLoading, setVerifyLoading] = useState(false)
+    const [resendLoading, setResendLoading] = useState(false)
+    const [verifyError, setVerifyError] = useState('')
+    const [verifyInfo, setVerifyInfo] = useState('')
+
     // If already logged in and on the standalone /auth page, go home
     useEffect(() => {
         if (!isModel && userData) {
@@ -97,7 +105,14 @@ function Auth({ isModel = false, defaultTab }) {
                 { name, email, password },
                 { withCredentials: true }
             )
-            onAuthSuccess(result.data)
+            if (result.data?.requiresVerification) {
+                setVerifyError('')
+                setVerifyInfo("We've sent a verification code and link to your email.")
+                setOtp('')
+                setVerifyEmail(result.data.email || email)
+            } else {
+                onAuthSuccess(result.data)
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed.')
         } finally {
@@ -120,10 +135,66 @@ function Auth({ isModel = false, defaultTab }) {
             )
             onAuthSuccess(result.data)
         } catch (err) {
-            setError(err.response?.data?.message || 'Login failed.')
+            const data = err.response?.data
+            if (data?.requiresVerification) {
+                setVerifyError('')
+                setVerifyInfo(data.message || 'Please verify your email to continue.')
+                setOtp('')
+                setVerifyEmail(data.email || email)
+            } else {
+                setError(data?.message || 'Login failed.')
+            }
         } finally {
             setLoading(false)
         }
+    }
+
+    // ── Verify OTP ────────────────────────────────────────────────────────────
+    const handleVerifyOtp = async () => {
+        setVerifyError('')
+        if (!otp.trim() || otp.trim().length !== 6) {
+            return setVerifyError('Please enter the 6-digit code from your email.')
+        }
+        setVerifyLoading(true)
+        try {
+            const result = await axios.post(
+                ServerUrl + '/api/auth/verify-otp',
+                { email: verifyEmail, otp: otp.trim() },
+                { withCredentials: true }
+            )
+            onAuthSuccess(result.data)
+        } catch (err) {
+            setVerifyError(err.response?.data?.message || 'Verification failed.')
+        } finally {
+            setVerifyLoading(false)
+        }
+    }
+
+    // ── Resend OTP / Link ─────────────────────────────────────────────────────
+    const handleResendOtp = async () => {
+        setVerifyError('')
+        setVerifyInfo('')
+        setResendLoading(true)
+        try {
+            const result = await axios.post(
+                ServerUrl + '/api/auth/resend-otp',
+                { email: verifyEmail }
+            )
+            setVerifyInfo(result.data?.message || 'A new code has been sent to your email.')
+        } catch (err) {
+            setVerifyError(err.response?.data?.message || 'Failed to resend code.')
+        } finally {
+            setResendLoading(false)
+        }
+    }
+
+    // ── Back to login from verify screen ─────────────────────────────────────
+    const backToLogin = () => {
+        setVerifyEmail(null)
+        setOtp('')
+        setVerifyError('')
+        setVerifyInfo('')
+        switchTab('login')
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -156,6 +227,94 @@ function Auth({ isModel = false, defaultTab }) {
                     <span className="text-xl font-bold">Cogniva</span>
                 </div>
 
+                {verifyEmail ? (
+                    <motion.div
+                        key="verify"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="flex flex-col gap-4"
+                    >
+                        <h1 className="text-2xl md:text-3xl font-semibold text-center leading-snug mb-1">
+                            Verify your{' '}
+                            <span className="bg-green-100 text-green-600 px-3 py-1 rounded-full inline-flex items-center gap-1">
+                                <IoSparkles size={15} />
+                                email
+                            </span>
+                        </h1>
+                        <p className="text-gray-500 text-center text-sm">
+                            We've sent a 6-digit code and a verification link to{' '}
+                            <span className="font-medium text-gray-700">{verifyEmail}</span>.
+                            Enter the code below, or click the link in your inbox — either one logs you in automatically.
+                        </p>
+
+                        <AnimatePresence>
+                            {verifyError && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0 }}
+                                    className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl"
+                                >
+                                    {verifyError}
+                                </motion.div>
+                            )}
+                            {verifyInfo && !verifyError && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0 }}
+                                    className="bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-xl"
+                                >
+                                    {verifyInfo}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Verification Code
+                            </label>
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={6}
+                                value={otp}
+                                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                onKeyDown={(e) => e.key === 'Enter' && handleVerifyOtp()}
+                                placeholder="••••••"
+                                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-center tracking-[0.5em] font-semibold focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition"
+                            />
+                        </div>
+
+                        <motion.button
+                            onClick={handleVerifyOtp}
+                            disabled={verifyLoading}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="w-full bg-black text-white py-3 rounded-full text-sm font-medium shadow-md disabled:opacity-60 mt-1"
+                        >
+                            {verifyLoading ? 'Verifying…' : 'Verify & Continue'}
+                        </motion.button>
+
+                        <div className="flex items-center justify-between text-sm">
+                            <button
+                                onClick={backToLogin}
+                                className="text-gray-500 hover:underline"
+                            >
+                                ← Back
+                            </button>
+                            <button
+                                onClick={handleResendOtp}
+                                disabled={resendLoading}
+                                className="text-green-600 font-medium hover:underline disabled:opacity-60"
+                            >
+                                {resendLoading ? 'Sending…' : 'Resend code'}
+                            </button>
+                        </div>
+                    </motion.div>
+                ) : (
+                <>
                 {/* Headline */}
                 <h1 className="text-2xl md:text-3xl font-semibold text-center leading-snug mb-2">
                     Continue with{' '}
@@ -398,6 +557,8 @@ function Auth({ isModel = false, defaultTab }) {
                         </motion.div>
                     )}
                 </AnimatePresence>
+                </>
+                )}
             </motion.div>
         </div>
     )

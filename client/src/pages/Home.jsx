@@ -24,6 +24,7 @@ function Home() {
   const { userData } = useSelector((state) => state.user)
   const [showAuth, setShowAuth] = useState(false);
   const [authTab, setAuthTab] = useState('login');
+  const [verifyBanner, setVerifyBanner] = useState(null) // 'success' | 'already' | 'error' | null
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -37,9 +38,45 @@ function Home() {
       window.history.replaceState({}, '', '/')
     }
   }, [location.search])
+
+  // Show a banner after returning from the email verification link
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const verify = params.get('verify')
+    if (verify) {
+      setVerifyBanner(verify)
+      window.history.replaceState({}, '', '/')
+    }
+  }, [location.search])
   return (
     <div className='min-h-screen bg-[#f3f3f3] flex flex-col'>
       <Navbar />
+
+      {verifyBanner && (
+        <div className='flex justify-center px-4 mt-4'>
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`w-full max-w-6xl rounded-2xl px-6 py-3 text-sm flex items-center justify-between gap-4 border ${
+              verifyBanner === 'error'
+                ? 'bg-red-50 border-red-200 text-red-600'
+                : 'bg-green-50 border-green-200 text-green-700'
+            }`}
+          >
+            <span>
+              {verifyBanner === 'success' && "✅ Email verified successfully — you're now logged in. Welcome to Cogniva!"}
+              {verifyBanner === 'already' && "✅ This email is already verified — you're now logged in."}
+              {verifyBanner === 'error' && "⚠️ This verification link is invalid or has expired. Please try logging in and request a new code."}
+            </span>
+            <button
+              onClick={() => setVerifyBanner(null)}
+              className='text-current opacity-60 hover:opacity-100 font-medium'
+            >
+              ✕
+            </button>
+          </motion.div>
+        </div>
+      )}
 
       <div className='flex-1 px-6 py-20'>
 

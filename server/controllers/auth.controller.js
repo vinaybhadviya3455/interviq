@@ -4,6 +4,7 @@ import genToken from "../config/token.js"
 import User from "../models/user.model.js"
 import {
     sendWelcomeEmail,
+    sendVerificationEmail,
     sendPasswordResetEmail,
     sendPasswordChangedEmail,
 } from "../services/email.service.js"
@@ -22,6 +23,28 @@ const setCookie = (res, token) => {
 
 const generateSecureToken = () => crypto.randomBytes(32).toString("hex")
 
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString()
+
+const OTP_EXPIRY_MS = 10 * 60 * 1000 // 10 minutes
+const VERIFY_LINK_EXPIRY_MS = 24 * 60 * 60 * 1000 // 24 hours
+
+// Generates and saves a fresh OTP + verification link token for a user,
+// then emails both to them.
+const issueAndSendVerification = async (user) => {
+    const otp = generateOTP()
+    const verifyToken = generateSecureToken()
+
+    user.otp = otp
+    user.otpExpiry = new Date(Date.now() + OTP_EXPIRY_MS)
+    user.verifyToken = verifyToken
+    user.verifyTokenExpiry = new Date(Date.now() + VERIFY_LINK_EXPIRY_MS)
+    await user.save()
+
+    const backendUrl = process.env.BACKEND_URL || "http://localhost:8000"
+    const verifyUrl = `${backendUrl}/api/auth/verify-email?token=${verifyToken}`
+    await sendVerificationEmail(user, otp, verifyUrl)
+}
+
 
 // ── Google OAuth ──────────────────────────────────────────────────────────────
 
@@ -32,7 +55,7 @@ export const googleAuth = async (req, res) => {
         let user = await User.findOne({ email })
 
         if (!user) {
-            user = await User.create({ name, email })
+            user = await User.create({ name, email, isVerified: true })
             try { await sendWelcomeEmail(user) } catch (_) { /* non-fatal */ }
         }
 
@@ -68,14 +91,20 @@ export const register = async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10)
 
-        const user = await User.create({ name, email, password: hashedPassword })
+        const user = await User.create({ name, email, password: hashedPassword, isVerified: false })
 
-        try { await sendWelcomeEmail(user) } catch (_) { /* non-fatal */ }
+        try {
+            await issueAndSendVerification(user)
+        } catch (e) {
+            console.error("Verification email failed:", e.message)
+        }
 
-        const token = await genToken(user._id)
-        setCookie(res, token)
-
-        return res.status(201).json(user)
+        // No login/cookie yet — user must verify via OTP or email link first.
+        return res.status(201).json({
+            requiresVerification: true,
+            email: user.email,
+            message: "Account created. We've sent a verification code and link to your email.",
+        })
 
     } catch (error) {
         return res.status(500).json({ message: `Register Error: ${error.message}` })
@@ -105,6 +134,14 @@ export const login = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password)
         if (!isMatch) {
             return res.status(400).json({ message: "Invalid email or password" })
+        }
+
+        if (!user.isVerified) {
+            return res.status(403).json({
+                requiresVerification: true,
+                email: user.email,
+                message: "Please verify your email before logging in. Enter the OTP sent to your email or click the verification link.",
+            })
         }
 
         const token = await genToken(user._id)
@@ -233,5 +270,129 @@ export const validateResetToken = async (req, res) => {
 
     } catch (error) {
         return res.status(500).json({ message: `Validate Token Error: ${error.message}` })
+    }
+}
+
+
+// ── Complete verification (shared by OTP + link) ──────────────────────────────
+
+const completeVerification = async (user, res) => {
+    user.isVerified = true
+    user.otp = null
+    user.otpExpiry = null
+    user.verifyToken = null
+    user.verifyTokenExpiry = null
+    await user.save()
+
+    try { await sendWelcomeEmail(user) } catch (_) { /* non-fatal */ }
+
+    const token = await genToken(user._id)
+    setCookie(res, token)
+}
+
+
+// ── Verify via OTP ──────────────────────────────────────────────────────────────
+
+export const verifyOtp = async (req, res) => {
+    try {
+        const { email, otp } = req.body
+
+        if (!email || !otp) {
+            return res.status(400).json({ message: "Email and OTP are required" })
+        }
+
+        const user = await User.findOne({ email })
+
+        if (!user) {
+            return res.status(400).json({ message: "No account found with this email" })
+        }
+
+        if (user.isVerified) {
+            return res.status(400).json({ message: "This account is already verified. Please log in." })
+        }
+
+        if (!user.otp || !user.otpExpiry || user.otpExpiry < new Date()) {
+            return res.status(400).json({ message: "OTP has expired. Please request a new one." })
+        }
+
+        if (user.otp !== otp) {
+            return res.status(400).json({ message: "Invalid OTP. Please try again." })
+        }
+
+        await completeVerification(user, res)
+
+        return res.status(200).json(user)
+
+    } catch (error) {
+        return res.status(500).json({ message: `Verify OTP Error: ${error.message}` })
+    }
+}
+
+
+// ── Verify via Email Link ─────────────────────────────────────────────────────
+
+export const verifyEmailLink = async (req, res) => {
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173"
+
+    try {
+        const { token } = req.query
+
+        if (!token) {
+            return res.redirect(`${frontendUrl}/?verify=error`)
+        }
+
+        const user = await User.findOne({
+            verifyToken: token,
+            verifyTokenExpiry: { $gt: new Date() },
+        })
+
+        if (!user) {
+            return res.redirect(`${frontendUrl}/?verify=error`)
+        }
+
+        if (user.isVerified) {
+            return res.redirect(`${frontendUrl}/?verify=already`)
+        }
+
+        await completeVerification(user, res)
+
+        return res.redirect(`${frontendUrl}/?verify=success`)
+
+    } catch (error) {
+        return res.redirect(`${frontendUrl}/?verify=error`)
+    }
+}
+
+
+// ── Resend OTP / Verification Link ────────────────────────────────────────────
+
+export const resendOtp = async (req, res) => {
+    try {
+        const { email } = req.body
+
+        if (!email) {
+            return res.status(400).json({ message: "Email is required" })
+        }
+
+        const user = await User.findOne({ email })
+
+        if (!user) {
+            return res.status(400).json({ message: "No account found with this email" })
+        }
+
+        if (user.isVerified) {
+            return res.status(400).json({ message: "This account is already verified. Please log in." })
+        }
+
+        try {
+            await issueAndSendVerification(user)
+        } catch (e) {
+            return res.status(500).json({ message: "Failed to send verification email. Please try again." })
+        }
+
+        return res.status(200).json({ message: "A new verification code and link have been sent to your email." })
+
+    } catch (error) {
+        return res.status(500).json({ message: `Resend OTP Error: ${error.message}` })
     }
 }

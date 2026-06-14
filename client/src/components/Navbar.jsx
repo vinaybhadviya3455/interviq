@@ -5,6 +5,7 @@ import { motion } from "motion/react"
 import { BsRobot, BsCoin } from "react-icons/bs";
 import { HiOutlineLogout } from "react-icons/hi";
 import { FaUserAstronaut } from "react-icons/fa";
+import { MdDeleteOutline } from "react-icons/md";
 import { useNavigate } from 'react-router-dom';
 import { ServerUrl } from '../App';
 import { setUserData } from '../redux/userSlice';
@@ -24,6 +25,10 @@ function Navbar() {
 
     const [showUserPopup,setShowUserPopup]=useState(false)
 
+    const [confirmDelete,setConfirmDelete]=useState(false)
+
+    const [deleting,setDeleting]=useState(false)
+
     const navigate = useNavigate()
 
     const dispatch = useDispatch()
@@ -41,6 +46,22 @@ function Navbar() {
             navigate("/")
         } catch (error) {
             console.log(error)
+        }
+    }
+
+    const handleDeleteAccount = async () => {
+        setDeleting(true)
+        try {
+            await axios.delete(ServerUrl+"/api/user/delete-account",{withCredentials:true})
+            dispatch(setUserData(null))
+            setConfirmDelete(false)
+            setShowUserPopup(false)
+            setShowCreditPopup(false)
+            navigate("/")
+        } catch (error) {
+            console.log(error)
+        } finally {
+            setDeleting(false)
         }
     }
   return (
@@ -118,6 +139,7 @@ function Navbar() {
                         
                         setShowUserPopup(!showUserPopup);
                         setShowCreditPopup(false)
+                        setConfirmDelete(false)
                     }} className='w-9 h-9 bg-black text-white rounded-full flex items-center justify-center font-semibold'>
 
                         {userData ? userData?.name.slice(0,1).toUpperCase() : <FaUserAstronaut size={16}/>}
@@ -133,6 +155,32 @@ function Navbar() {
                             <button onClick={handleLogout} className='w-full text-left text-sm py-2 flex items-center gap-2 text-red-500'>
                                 <HiOutlineLogout size={16}/>
                                 Logout</button>
+
+                            <div className='border-t border-gray-100 mt-1 pt-1'>
+                                {!confirmDelete ? (
+                                    <button onClick={()=>setConfirmDelete(true)} className='w-full text-left text-sm py-2 flex items-center gap-2 text-gray-400 hover:text-red-500'>
+                                        <MdDeleteOutline size={16}/>
+                                        Delete Account</button>
+                                ) : (
+                                    <div className='py-1'>
+                                        <p className='text-xs text-gray-500 mb-2'>This will permanently delete your account, interviews and history. Are you sure?</p>
+                                        <div className='flex gap-2'>
+                                            <button
+                                                onClick={handleDeleteAccount}
+                                                disabled={deleting}
+                                                className='flex-1 text-xs bg-red-500 text-white py-2 rounded-lg disabled:opacity-60'>
+                                                {deleting ? "Deleting..." : "Yes, delete"}
+                                            </button>
+                                            <button
+                                                onClick={()=>setConfirmDelete(false)}
+                                                disabled={deleting}
+                                                className='flex-1 text-xs bg-gray-100 text-gray-600 py-2 rounded-lg'>
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
                         </div>
                     )}

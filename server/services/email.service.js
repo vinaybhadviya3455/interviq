@@ -92,6 +92,40 @@ Good luck with your interview preparation! 🚀
     `),
 })
 
+const verificationEmailTemplate = (name, otp, verifyUrl) => ({
+    subject: "Verify your Cogniva account",
+    html: baseWrapper(`
+        <h2 style="margin:0 0 8px;font-size:24px;color:#111827;">Verify your email ✨</h2>
+        <p style="color:#6b7280;font-size:15px;line-height:1.6;margin:0 0 20px;">
+            Hi <strong>${name}</strong>, thanks for signing up for Cogniva! Use the One-Time Password (OTP)
+            below to verify your account, or simply click the verification button — either option will log you in.
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:0;margin:0 0 24px;">
+          <tr>
+            <td style="padding:24px;text-align:center;">
+              <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#15803d;letter-spacing:1px;text-transform:uppercase;">Your verification code</p>
+              <p style="margin:0;font-size:36px;font-weight:700;color:#111827;letter-spacing:10px;">${otp}</p>
+              <p style="margin:8px 0 0;font-size:12px;color:#6b7280;">This code expires in 10 minutes.</p>
+            </td>
+          </tr>
+        </table>
+        <div style="text-align:center;margin:0 0 8px;">
+            <p style="color:#9ca3af;font-size:13px;margin:0 0 4px;">— or —</p>
+            ${primaryBtn(verifyUrl, "Verify Email & Log In")}
+        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#fef9c3;border:1px solid #fde68a;border-radius:12px;padding:0;margin-top:8px;">
+          <tr>
+            <td style="padding:16px;">
+              <p style="margin:0;font-size:13px;color:#92400e;">
+                ⚠️ If you didn't create a Cogniva account, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
+        </table>
+    `),
+})
+
+
 const passwordResetEmailTemplate = (name, resetUrl) => ({
     subject: "Reset your Cogniva password",
     html: baseWrapper(`
@@ -158,8 +192,8 @@ const sendEmail = async ({ to, subject, html }) => {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export const sendVerificationEmail = async (user, verifyUrl) => {
-    const template = verificationEmailTemplate(user.name, verifyUrl)
+export const sendVerificationEmail = async (user, otp, verifyUrl) => {
+    const template = verificationEmailTemplate(user.name, otp, verifyUrl)
     await sendEmail({ to: user.email, ...template })
 }
 

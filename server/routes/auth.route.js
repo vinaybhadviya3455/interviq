@@ -7,6 +7,9 @@ import {
     forgotPassword,
     resetPassword,
     validateResetToken,
+    verifyOtp,
+    verifyEmailLink,
+    resendOtp,
 } from "../controllers/auth.controller.js"
 
 const authRouter = express.Router()
@@ -18,5 +21,8 @@ authRouter.get("/logout", logOut)
 authRouter.post("/forgot-password", forgotPassword)
 authRouter.post("/reset-password", resetPassword)
 authRouter.get("/validate-reset-token", validateResetToken)
+authRouter.post("/verify-otp", verifyOtp)
+authRouter.get("/verify-email", verifyEmailLink)
+authRouter.post("/resend-otp", resendOtp)
 
 export default authRouter
