@@ -14,7 +14,7 @@ import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 
 
-export const ServerUrl = "http://localhost:8000"
+export const ServerUrl = "https://interviq.onrender.com"
 
 function App() {
 
